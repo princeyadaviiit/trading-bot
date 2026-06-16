@@ -1,18 +1,19 @@
-# 🤖 SMC Forex Trading Bot - Telegram Alert System
+# 🤖 SMC Forex Trading Bot - Discord Alert System
 
-Automated 24/7 Smart Money Concepts (SMC) trading bot that monitors forex pairs and sends high-probability trade setups to your Telegram. **Works perfectly in India with MetaTrader 5!**
+Automated 24/7 Smart Money Concepts (SMC) trading bot that monitors forex pairs and sends high-probability trade setups to your Discord channel. **Powered by MetaTrader 5 - No API limits!**
 
 ## 📋 Features
 
 - ✅ **24/7 Automated Monitoring** - Runs continuously without manual intervention
 - ✅ **SMC Strategy** - Order Blocks, Fair Value Gaps, Liquidity Sweeps
-- ✅ **Telegram Alerts** - Real-time notifications for trade setups
+- ✅ **Discord Alerts** - Real-time notifications for trade setups
 - ✅ **Multi-Pair Support** - Monitor multiple forex pairs simultaneously
 - ✅ **Session Filtering** - Only alerts during London/NY sessions (no spam)
 - ✅ **Quality Scoring** - Only sends setups with score ≥ 7/10
 - ✅ **Risk Management** - Auto-calculates position size and stop loss
-- ✅ **Easy Control** - Telegram commands to add/remove pairs
-- ✅ **India Compatible** - Uses MetaTrader 5 (not restricted in India!)
+- ✅ **Easy Control** - Discord commands to add/remove pairs
+- ✅ **Fast Scanning** - 60-second intervals with MT5 real-time data
+- ✅ **No API Limits** - Direct MT5 connection, unlimited data access
 
 ---
 
@@ -20,8 +21,9 @@ Automated 24/7 Smart Money Concepts (SMC) trading bot that monitors forex pairs 
 
 ### Prerequisites
 
+- Windows OS (required for MT5)
 - Python 3.8 or higher
-- Telegram account
+- Discord account
 - MetaTrader 5 (free download)
 - MT5 demo account (free, no credit card needed)
 
@@ -37,7 +39,7 @@ Automated 24/7 Smart Money Concepts (SMC) trading bot that monitors forex pairs 
    - Open MT5 → File → Open an Account
    - Choose: ICMarkets-Demo (or XM, FXCM)
    - Fill form → Get Login, Password, Server
-   - Save credentials!
+   - Login and keep MT5 running
 
 3. **Install bot dependencies**
    ```bash
@@ -46,8 +48,8 @@ Automated 24/7 Smart Money Concepts (SMC) trading bot that monitors forex pairs 
    ```
 
 4. **Configure environment**
-   - Copy `.env.example` to `.env`
-   - Fill in your credentials (see Configuration section)
+   - Edit `.env` file
+   - Add your Discord credentials (see Configuration section)
 
 5. **Run the bot**
    ```bash
@@ -58,19 +60,32 @@ Automated 24/7 Smart Money Concepts (SMC) trading bot that monitors forex pairs 
 
 ## ⚙️ Configuration
 
-### 1. Create Telegram Bot
+### 1. Create Discord Bot
 
-1. Open Telegram and search for `@BotFather`
-2. Send `/newbot` command
-3. Follow prompts to create bot
-4. Copy the **Bot Token** (looks like: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
-5. Get your **Chat ID**:
-   - Search for `@userinfobot` on Telegram
-   - Start chat and it will send your Chat ID
+1. Visit **Discord Developer Portal**: https://discord.com/developers/applications
+2. Click **"New Application"**
+3. Name your bot (e.g., "SMC Trading Bot")
+4. Go to **"Bot"** tab → Click **"Add Bot"**
+5. Under **Token** section → Click **"Reset Token"** → Copy the token
+6. Enable these **Privileged Gateway Intents**:
+   - ✅ MESSAGE CONTENT INTENT
+   - ✅ SERVER MEMBERS INTENT (optional)
+7. Go to **"OAuth2"** → **"URL Generator"**
+   - Select scopes: `bot`
+   - Select permissions: `Send Messages`, `Read Messages/View Channels`
+   - Copy the generated URL
+8. Open URL in browser → Add bot to your Discord server
 
-### 2. Setup MetaTrader 5
+### 2. Get Discord Channel ID
 
-**Getting Demo Account (Works in India!):**
+1. Enable Developer Mode in Discord:
+   - User Settings → Advanced → Enable Developer Mode
+2. Right-click your channel → Copy ID
+3. Save this Channel ID
+
+### 3. Setup MetaTrader 5
+
+**Getting Demo Account:**
 
 1. **Download & Install MT5:**
    - Visit: https://www.metatrader5.com/en/download
@@ -80,39 +95,37 @@ Automated 24/7 Smart Money Concepts (SMC) trading bot that monitors forex pairs 
 2. **Create Demo Account:**
    - Open MT5 application
    - Click: File → Open an Account
-   - Search for "ICMarkets" (recommended for India)
+   - Search for "ICMarkets" (recommended)
    - Select "ICMarkets-Demo"
    - Fill registration form:
      - Name: Your name
      - Email: Your email
-     - Phone: Your phone number
      - Leverage: 1:500
      - Deposit: $10,000 (demo money)
    - Click Next
-   - **Save the credentials:** Login, Password, Server
+   - **Save the credentials** and login
 
-**Alternative Brokers for India:**
+3. **Keep MT5 Running:**
+   - MT5 must be running for the bot to work
+   - Login to your demo account
+   - Minimize to system tray
+
+**Alternative Brokers:**
 - **XM Global:** `XM Global-Demo`
 - **FXCM:** `FXCM-Demo`
 - **FBS:** `FBS-Demo`
 
-### 3. Setup .env File
+### 4. Setup .env File
 
-Create a `.env` file in the `bot_setup` folder:
+Edit the `.env` file in the `bot_setup` folder:
 
 ```env
-# Telegram Configuration
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
-TELEGRAM_CHAT_ID=123456789
-
-# MetaTrader 5 Configuration
-MT5_LOGIN=12345678
-MT5_PASSWORD=YourPassword123
-MT5_SERVER=ICMarkets-Demo
-MT5_PATH=
+# Discord Configuration
+DISCORD_BOT_TOKEN=your_bot_token_here
+DISCORD_CHANNEL_ID=your_channel_id_here
 
 # Trading Configuration
-ACCOUNT_SIZE=10000
+ACCOUNT_SIZE=1000
 RISK_PERCENT=0.5
 MIN_SETUP_SCORE=7
 
@@ -133,18 +146,18 @@ MAX_ALERTS_PER_HOUR=3
 
 ---
 
-## 📱 Telegram Commands
+## 📱 Discord Commands
 
-Once bot is running, send these commands in Telegram:
+Once bot is running, send these commands in Discord:
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `/start` | Start the bot and show welcome message | `/start` |
-| `/add <pair>` | Add forex pair to monitoring | `/add AUDUSD` |
-| `/remove <pair>` | Remove pair from monitoring | `/remove USDJPY` |
-| `/list` | Show all monitored pairs | `/list` |
-| `/status` | Show bot status and statistics | `/status` |
-| `/help` | Show all commands | `/help` |
+| `!start` | Start the bot and show welcome message | `!start` |
+| `!add <pair>` | Add forex pair to monitoring | `!add AUDUSD` |
+| `!remove <pair>` | Remove pair from monitoring | `!remove USDJPY` |
+| `!list` | Show all monitored pairs | `!list` |
+| `!status` | Show bot status and statistics | `!status` |
+| `!help` | Show all commands | `!help` |
 
 ---
 
@@ -152,7 +165,7 @@ Once bot is running, send these commands in Telegram:
 
 ### 1. Market Analysis
 
-The bot continuously analyzes forex pairs using SMC concepts:
+The bot scans markets every **60 seconds** using SMC concepts:
 
 - **Order Blocks**: Identifies institutional buying/selling zones
 - **Fair Value Gaps**: Finds market inefficiencies/imbalances
@@ -203,9 +216,21 @@ TP3: 1.16100 (135 pips | 1:3.0)
 
 💰 POSITION SIZE:
 Lot Size: 0.11 lots
-Risk: $50.00 (0.5%)
+Risk: $5.00 (0.5%)
 
-Setup Score: 9/10 ⭐⭐⭐
+📈 MARKET INFO:
+Structure: Bullish
+Bias: Long
+Session: London
+Time: 14:30 IST
+
+⚠️ CONFIRMATION NEEDED:
+Wait for bullish candle close
+Check volume increase
+No news in next 1 hour
+
+---
+Setup Score: 9/10 ⭐⭐⭐⭐⭐⭐⭐⭐⭐
 ```
 
 ---
@@ -216,21 +241,22 @@ Setup Score: 9/10 ⭐⭐⭐
 
 Edit `config.py`:
 ```python
-DEFAULT_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD']
+DEFAULT_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY']
 ```
 
-Or use Telegram commands:
+Or use Discord commands:
 ```
-/add EURJPY
-/add AUDNZD
+!add EURJPY
+!add AUDNZD
+!remove USDJPY
 ```
 
 ### Adjust Risk Settings
 
 Edit `.env`:
 ```env
-ACCOUNT_SIZE=10000  # Your demo account size
-RISK_PERCENT=0.5    # Risk per trade (0.5% = $50 on $10k)
+ACCOUNT_SIZE=1000   # Your demo account size
+RISK_PERCENT=0.5    # Risk per trade (0.5% = $5 on $1k)
 ```
 
 ### Change Session Times
@@ -259,18 +285,16 @@ bot_setup/
 │
 ├── main.py                 # Main bot entry point
 ├── strategy.py             # SMC strategy implementation
-├── telegram_handler.py     # Telegram bot commands
+├── discord_handler.py      # Discord bot commands & alerts
 ├── market_data.py          # MT5 API integration
 ├── analyzer.py             # Market analysis logic
 ├── config.py               # Configuration settings
 ├── utils.py                # Helper functions
 │
 ├── requirements.txt        # Python dependencies
-├── .env.example            # Environment variables template
-├── .env                    # Your actual credentials (create this)
+├── .env                    # Your credentials
 │
-├── README.md               # This file
-└── QUICKSTART.md           # 5-minute setup guide
+└── README.md               # This file
 ```
 
 ---
@@ -294,15 +318,15 @@ pip install -r requirements.txt
 
 **Check:**
 1. MT5 is installed
-2. MT5 application is RUNNING in background
-3. You can open MT5 manually
-4. Demo account is active
+2. MT5 application is RUNNING
+3. You're logged into a demo account
+4. You can see live prices in MT5
 
 **Solution:**
 - Open MT5 manually first
-- Go to Tools → Options → Server
-- Verify server name matches `.env` file
-- Try logging in manually in MT5
+- Login to your demo account
+- Verify you see live price updates
+- Then start the bot
 
 ---
 
@@ -310,16 +334,17 @@ pip install -r requirements.txt
 
 **Check:**
 1. Bot is running: `python main.py` should show "Bot started"
-2. Telegram chat ID is correct in `.env`
-3. Current time is during London/NY session
-4. Run `/status` command to see if monitoring is active
-5. Lower `MIN_SETUP_SCORE` to 6 for testing
+2. Discord bot token and channel ID correct in `.env`
+3. Bot has permission to send messages in the channel
+4. Current time is during London/NY session
+5. Run `!status` command to see if monitoring is active
+6. Lower `MIN_SETUP_SCORE` to 6 for testing
 
 **Verify:**
-```
+```bash
 python market_data.py
 ```
-Should show: "✅ Connected to MT5" and fetch data
+Should show: "✅ MT5 initialized successfully" and fetch data
 
 ---
 
@@ -336,22 +361,33 @@ Should show: "✅ Connected to MT5" and fetch data
 
 ---
 
+### Discord bot not responding
+
+**Check:**
+1. Bot is online in Discord (green status)
+2. MESSAGE CONTENT INTENT is enabled in Developer Portal
+3. Bot has Read/Send message permissions in channel
+4. Commands start with `!` not `/`
+
+---
+
 ## 📈 Performance Tips
 
 ### For Best Results:
 
 1. **Start during London Open** (1:30 PM IST) - Most setups occur
-2. **Monitor 3-5 pairs** - Balance between coverage and quality
+2. **Monitor 2-3 pairs** - Focus on EURUSD, GBPUSD, USDCAD
 3. **Trust the scoring** - Score ≥ 8 = very high probability
 4. **Use demo first** - Test for 1-2 weeks before live trading
-5. **Keep MT5 running** - Bot needs MT5 connection
+5. **Keep MT5 running** - Bot needs active MT5 connection
+6. **Fast scanning** - 60-second intervals catch setups quickly
 
-### Recommended for 24/7:
+### System Requirements:
 
-**VPS Providers in India:**
-- Hostinger India ($3/month)
-- DigitalOcean Bangalore ($5/month)
-- AWS Mumbai ($3.50/month)
+- **Windows 10/11** (MT5 requirement)
+- **4GB RAM minimum**
+- **Stable internet connection**
+- **MT5 running in background**
 
 ---
 
@@ -359,12 +395,13 @@ Should show: "✅ Connected to MT5" and fetch data
 
 ### Built-in Safety Features:
 
-- ✅ Maximum 0.5% risk per trade
+- ✅ Default 0.5% risk per trade
 - ✅ Auto-calculated position sizing
 - ✅ Stop loss on every setup
 - ✅ Multiple take profit levels (scaled exits)
 - ✅ Session filtering (avoid low liquidity)
 - ✅ Quality scoring (only high-probability setups)
+- ✅ Lot size clearly displayed in alerts
 
 ### Important Notes:
 
@@ -385,40 +422,29 @@ Should show: "✅ Connected to MT5" and fetch data
 
 ---
 
-## 🇮🇳 India-Specific Information
+## 🎯 Default Configuration
 
-### Why MetaTrader 5?
+### Default Monitored Pairs:
+- EURUSD
+- GBPUSD
+- USDJPY
 
-✅ **Not Restricted in India**
-- OANDA is restricted in India
-- MT5 is fully legal and available
-- Many brokers offer MT5 in India
+### Timeframes Analyzed:
+- M15 (15-minute)
+- H1 (1-hour)
+- H4 (4-hour)
 
-✅ **Free Demo Accounts**
-- No credit card required
-- Unlimited practice
-- Real market data
+### Scan Interval:
+- **60 seconds** (fast with MT5)
 
-✅ **Better for Indian Traders**
-- Local broker options
-- INR deposit options (for live accounts later)
-- Better customer support in India
+### Session Times (IST):
+- London: 1:30 PM - 9:30 PM
+- NY: 6:30 PM - 1:30 AM (next day)
 
-### Recommended Brokers for Indians:
-
-1. **ICMarkets** - Best spreads, very reliable
-2. **XM Global** - Popular, good support
-3. **FXCM** - Well-known brand
-4. **FBS** - Easy signup
-
-**All offer free demo accounts!**
-
-### Tax Consideration:
-
-- Forex trading income is taxable in India
-- Keep records of all trades
-- Consult a Chartered Accountant for tax filing
-- Demo trading = no tax implications
+### Risk Management:
+- Account Size: $1,000 (demo)
+- Risk per Trade: 0.5% ($5)
+- Min Setup Score: 7/10
 
 ---
 
@@ -433,7 +459,7 @@ pip install -r requirements.txt --upgrade
 
 ### Monitor Performance:
 
-- Use `/status` command daily
+- Use `!status` command daily
 - Track win rate of alerts
 - Adjust `MIN_SETUP_SCORE` if needed (higher = fewer but better)
 
@@ -447,7 +473,7 @@ pip install -r requirements.txt --upgrade
 2. Verify `.env` configuration
 3. Test MT5 connection: `python market_data.py`
 4. Check bot logs in terminal
-5. Review `QUICKSTART.md` for setup steps
+5. Verify Discord bot permissions
 
 ---
 
@@ -460,15 +486,17 @@ This project is for educational purposes only. Not financial advice.
 ## 🎯 Next Steps
 
 1. ✅ Install MetaTrader 5
-2. ✅ Get demo account credentials
-3. ✅ Install dependencies: `pip install -r requirements.txt`
-4. ✅ Configure `.env` file
-5. ✅ Test MT5 connection: `python market_data.py`
-6. ✅ Run bot: `python main.py`
-7. ✅ Send `/start` to your Telegram bot
-8. ✅ Wait for alerts during London/NY sessions
-9. ✅ Track performance for 1-2 weeks
-10. ✅ Adjust settings as needed
+2. ✅ Get demo account and login
+3. ✅ Create Discord bot and get token
+4. ✅ Get Discord channel ID
+5. ✅ Install dependencies: `pip install -r requirements.txt`
+6. ✅ Configure `.env` file
+7. ✅ Test MT5 connection: `python market_data.py`
+8. ✅ Run bot: `python main.py`
+9. ✅ Send `!start` in Discord channel
+10. ✅ Wait for alerts during London/NY sessions
+11. ✅ Track performance for 1-2 weeks
+12. ✅ Adjust settings as needed
 
 ---
 
@@ -480,20 +508,39 @@ This project is for educational purposes only. Not financial advice.
 
 ## 💡 Quick Tips
 
-**For Indian Traders:**
-- Best times: 2:00 PM (London) and 7:00 PM (NY open)
-- Use ICMarkets demo (works great in India)
-- Keep MT5 running in background
-- Test thoroughly before considering live
+**Setup:**
+- Keep MT5 running and logged in
+- Use ICMarkets demo (reliable)
+- Enable MESSAGE CONTENT INTENT for Discord bot
+- Start bot during London session for quick testing
 
-**For All Users:**
+**Usage:**
 - Quality > Quantity (bot filters for you)
 - Score 9-10 = extremely high probability
+- Check lot size in each alert
 - Demo test minimum 2 weeks
 - Track your win rate
 - Adjust risk settings to your comfort level
 
+**Performance:**
+- 60-second scans = fast setup detection
+- No API limits with MT5
+- Real-time tick data
+- Reliable during high volatility
+
 ---
 
-**Ready to start?** Go to `QUICKSTART.md` for step-by-step setup! 📚
-# trading-bot
+## 🔑 Key Features
+
+✅ **Discord Integration** - Professional Discord bot with commands  
+✅ **MT5 Direct Connection** - No API limits, real-time data  
+✅ **Fast Scanning** - 60-second intervals  
+✅ **Auto Position Sizing** - Risk management built-in  
+✅ **Multi-Timeframe Analysis** - M15, H1, H4 confluence  
+✅ **Session Filtering** - London & NY only  
+✅ **Quality Scoring** - Score ≥ 7/10 only  
+✅ **Lot Size Display** - Clear position sizing in alerts  
+
+---
+
+**Ready to start?** Follow the Next Steps above! 📚
