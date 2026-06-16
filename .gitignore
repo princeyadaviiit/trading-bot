@@ -1,0 +1,13 @@
+# SMC Forex Trading Bot - Environment Variables
+
+# Add .env to gitignore
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.log
+.vscode/
+.idea/
