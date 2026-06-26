@@ -63,8 +63,8 @@ Railway will start deploying. Click on your project, then:
 - Add these variables one by one:
 
 ```env
-TELEGRAM_BOT_TOKEN=8711252539:AAGBgsK7xioimeNwmSDZObpLDHjhxX5Sa7s
-TELEGRAM_CHAT_ID=5689513108
+TELEGRAM_BOT_TOKEN=bot_token
+TELEGRAM_CHAT_ID=chat_id
 TWELVE_DATA_API_KEY=your_actual_api_key_here
 ACCOUNT_SIZE=1000
 RISK_PERCENT=0.5
