@@ -62,7 +62,10 @@ def is_ny_session() -> bool:
 
 def is_trading_session() -> bool:
     """Check if current time is during any trading session"""
-    return is_london_session() or is_ny_session()
+    # Enable 24/7 trading (including Asian session)
+    return True
+    # Original session-only logic:
+    # return is_london_session() or is_ny_session()
 
 def get_current_session() -> str:
     """Get name of current trading session"""
@@ -171,6 +174,12 @@ def format_telegram_message(setup: Dict) -> str:
     tp2_pips = calculate_pips(entry, tp2, setup['pair'])
     tp3_pips = calculate_pips(entry, tp3, setup['pair'])
 
+    # Format confirmations
+    confirmations = setup.get('confirmations', {})
+    conf_candle = "✅" if confirmations.get('has_confirmation_candle', False) else "⚠️"
+    conf_volume = "✅" if confirmations.get('has_high_volume', False) else "⚠️"
+    conf_zone = "✅" if confirmations.get('in_correct_zone', False) else "⚠️"
+
     # Format message
     message = f"""🚨 TRADE SETUP DETECTED 🚨
 
@@ -198,10 +207,10 @@ Bias: {setup.get('bias', 'N/A')}
 Session: {get_current_session()}
 Time: {get_ist_time().strftime('%H:%M IST')}
 
-⚠️ CONFIRMATION NEEDED:
-Wait for bullish candle close
-Check volume increase
-No news in next 1 hour
+⚠️ CONFIRMATION STATUS:
+{conf_candle} Confirmation Candle
+{conf_volume} High Volume
+{conf_zone} Correct Premium/Discount Zone
 
 ---
 Setup Score: {setup['score']}/10 {'⭐' * min(setup['score'], 10)}

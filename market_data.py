@@ -1,32 +1,37 @@
 """
-MetaTrader 5 Market Data Integration
-Fetches real-time forex data from MT5 terminal
+Twelve Data Market Data Integration
+Fetches real-time forex data from Twelve Data API
 """
-import MetaTrader5 as mt5
+import requests
 import pandas as pd
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
+import time
+import config
 
 class MarketData:
-    """Handler for MT5 market data"""
+    """Handler for Twelve Data API market data"""
 
     def __init__(self):
-        """Initialize MT5 connection"""
-        # Initialize MT5 connection
-        if not mt5.initialize():
-            raise ConnectionError(f"MT5 initialization failed: {mt5.last_error()}")
+        """Initialize Twelve Data API connection"""
+        self.api_key = config.TWELVE_DATA_API_KEY
+        self.base_url = "https://api.twelvedata.com"
 
-        print(f"✅ MT5 initialized successfully")
+        if not self.api_key:
+            raise ValueError("TWELVE_DATA_API_KEY is not set in environment variables")
 
-        # Get account info
-        account_info = mt5.account_info()
-        if account_info:
-            print(f"✅ Connected to account: {account_info.login}")
-            print(f"   Server: {account_info.server}")
-            print(f"   Balance: ${account_info.balance:.2f}")
+        print(f"✅ Twelve Data API initialized")
+        self.cache = {}
+        self.cache_duration = 60  # Cache for 60 seconds to avoid redundant API calls
+        self.last_request_time = 0
+        self.min_request_interval = 1.0  # Minimum 1 second between requests
 
-        self.cache = {}  # Simple cache to reduce unnecessary calls
-        self.cache_duration = 5  # Cache data for 5 seconds only (MT5 is fast)
+    def _wait_for_rate_limit(self):
+        """Ensure we don't exceed rate limits"""
+        elapsed = time.time() - self.last_request_time
+        if elapsed < self.min_request_interval:
+            time.sleep(self.min_request_interval - elapsed)
+        self.last_request_time = time.time()
 
     def _get_cache_key(self, pair: str, timeframe: str) -> str:
         """Generate cache key"""
@@ -40,20 +45,20 @@ class MarketData:
         cached_time, _ = self.cache[cache_key]
         return (datetime.now() - cached_time).total_seconds() < self.cache_duration
 
-    def _convert_timeframe(self, timeframe: str) -> int:
-        """Convert timeframe string to MT5 constant"""
+    def _convert_timeframe(self, timeframe: str) -> str:
+        """Convert internal timeframe to Twelve Data format"""
         timeframe_map = {
-            'M1': mt5.TIMEFRAME_M1,
-            'M5': mt5.TIMEFRAME_M5,
-            'M15': mt5.TIMEFRAME_M15,
-            'M30': mt5.TIMEFRAME_M30,
-            'H1': mt5.TIMEFRAME_H1,
-            'H4': mt5.TIMEFRAME_H4,
-            'D1': mt5.TIMEFRAME_D1,
-            'W1': mt5.TIMEFRAME_W1,
-            'MN1': mt5.TIMEFRAME_MN1
+            'M1': '1min',
+            'M5': '5min',
+            'M15': '15min',
+            'M30': '30min',
+            'H1': '1h',
+            'H4': '4h',
+            'D1': '1day',
+            'W1': '1week',
+            'MN1': '1month'
         }
-        return timeframe_map.get(timeframe, mt5.TIMEFRAME_M15)
+        return timeframe_map.get(timeframe, '15min')
 
     def get_candles(
         self,
@@ -62,10 +67,10 @@ class MarketData:
         count: int = 100
     ) -> Optional[pd.DataFrame]:
         """
-        Fetch candlestick data from MT5
+        Fetch candlestick data from Twelve Data API
 
         Args:
-            pair: Currency pair (e.g., 'EURUSD')
+            pair: Currency pair (e.g., 'EUR/USD')
             timeframe: Timeframe ('M15', 'H1', 'H4')
             count: Number of candles to fetch
 
@@ -79,32 +84,52 @@ class MarketData:
             return cached_df.copy()
 
         try:
+            # Rate limiting
+            self._wait_for_rate_limit()
+
             # Convert timeframe
-            mt5_timeframe = self._convert_timeframe(timeframe)
+            interval = self._convert_timeframe(timeframe)
 
-            # Get rates from MT5
-            rates = mt5.copy_rates_from_pos(pair, mt5_timeframe, 0, count)
+            # API endpoint
+            url = f"{self.base_url}/time_series"
 
-            if rates is None or len(rates) == 0:
-                print(f"❌ No data received for {pair} on {timeframe}")
-                error = mt5.last_error()
-                if error[0] != 1:  # 1 = success
-                    print(f"   MT5 Error: {error}")
+            params = {
+                'symbol': pair,
+                'interval': interval,
+                'outputsize': count,
+                'apikey': self.api_key,
+                'format': 'JSON'
+            }
+
+            response = requests.get(url, params=params, timeout=10)
+
+            if response.status_code != 200:
+                print(f"❌ API Error {response.status_code} for {pair}")
+                return None
+
+            data = response.json()
+
+            if 'values' not in data:
+                if 'message' in data:
+                    print(f"❌ API Message: {data['message']}")
+                else:
+                    print(f"❌ No data in response for {pair}")
                 return None
 
             # Convert to DataFrame
-            df = pd.DataFrame(rates)
-            df['time'] = pd.to_datetime(df['time'], unit='s')
-            df.set_index('time', inplace=True)
+            df = pd.DataFrame(data['values'])
 
-            # Rename columns to match expected format
-            df.rename(columns={
-                'open': 'open',
-                'high': 'high',
-                'low': 'low',
-                'close': 'close',
-                'tick_volume': 'volume'
-            }, inplace=True)
+            # Convert datetime
+            df['datetime'] = pd.to_datetime(df['datetime'])
+            df.set_index('datetime', inplace=True)
+            df.sort_index(inplace=True)  # Sort chronologically
+
+            # Convert strings to floats
+            df['open'] = df['open'].astype(float)
+            df['high'] = df['high'].astype(float)
+            df['low'] = df['low'].astype(float)
+            df['close'] = df['close'].astype(float)
+            df['volume'] = df['volume'].astype(float)
 
             # Select only needed columns
             df = df[['open', 'high', 'low', 'close', 'volume']]
@@ -112,8 +137,15 @@ class MarketData:
             # Cache the result
             self.cache[cache_key] = (datetime.now(), df.copy())
 
+            print(f"✅ Fetched {len(df)} candles for {pair} {timeframe}")
             return df
 
+        except requests.exceptions.Timeout:
+            print(f"❌ Request timeout for {pair}")
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Request error for {pair}: {e}")
+            return None
         except Exception as e:
             print(f"❌ Error fetching candles for {pair}: {e}")
             return None
@@ -129,15 +161,25 @@ class MarketData:
             Current price or None if error
         """
         try:
-            # Get current tick
-            tick = mt5.symbol_info_tick(pair)
+            self._wait_for_rate_limit()
 
-            if tick is None:
-                print(f"❌ Error fetching current price for {pair}")
+            url = f"{self.base_url}/price"
+            params = {
+                'symbol': pair,
+                'apikey': self.api_key
+            }
+
+            response = requests.get(url, params=params, timeout=10)
+
+            if response.status_code != 200:
                 return None
 
-            # Return bid price (or average of bid/ask)
-            return (tick.bid + tick.ask) / 2
+            data = response.json()
+
+            if 'price' in data:
+                return float(data['price'])
+
+            return None
 
         except Exception as e:
             print(f"❌ Error fetching current price for {pair}: {e}")
@@ -163,11 +205,11 @@ class MarketData:
 
         data = {}
 
-        # No need for delay with MT5 - it's local and fast
         for tf in timeframes:
             df = self.get_candles(pair, tf, count=100)
-            if df is not None:
+            if df is not None and not df.empty:
                 data[tf] = df
+            time.sleep(0.5)  # Small delay between requests
 
         return data
 
@@ -182,6 +224,9 @@ class MarketData:
         Returns:
             Current ATR value
         """
+        if df is None or df.empty or len(df) < period:
+            return 0
+
         high = df['high']
         low = df['low']
         close = df['close']
@@ -201,18 +246,26 @@ class MarketData:
         period: int = 20
     ) -> float:
         """Calculate average volume"""
+        if df is None or df.empty or len(df) < period:
+            return 0
         return df['volume'].rolling(window=period).mean().iloc[-1]
 
-    def is_high_volume(self, df: pd.DataFrame, threshold: float = 1.2) -> bool:
+    def is_high_volume(self, df: pd.DataFrame, threshold: float = 1.3) -> bool:
         """Check if current volume is above average"""
+        if df is None or df.empty:
+            return False
+
         current_volume = df['volume'].iloc[-1]
         avg_volume = self.calculate_volume_average(df)
+
+        if avg_volume == 0:
+            return False
 
         return current_volume > (avg_volume * threshold)
 
     def get_symbol_info(self, pair: str) -> Optional[Dict]:
         """
-        Get symbol information from MT5
+        Get symbol information
 
         Args:
             pair: Currency pair
@@ -220,46 +273,26 @@ class MarketData:
         Returns:
             Dictionary with symbol info
         """
-        try:
-            info = mt5.symbol_info(pair)
-            if info is None:
-                return None
-
-            return {
-                'name': info.name,
-                'description': info.description,
-                'point': info.point,
-                'digits': info.digits,
-                'spread': info.spread,
-                'volume_min': info.volume_min,
-                'volume_max': info.volume_max,
-                'volume_step': info.volume_step,
-                'contract_size': info.trade_contract_size,
-            }
-
-        except Exception as e:
-            print(f"❌ Error fetching symbol info for {pair}: {e}")
-            return None
-
-    def __del__(self):
-        """Cleanup MT5 connection"""
-        try:
-            mt5.shutdown()
-            print("✅ MT5 connection closed")
-        except:
-            pass
+        # For forex pairs, return standard info
+        return {
+            'name': pair,
+            'description': f"{pair} Forex Pair",
+            'type': 'Forex',
+            'currency_base': pair.split('/')[0] if '/' in pair else pair[:3],
+            'currency_quote': pair.split('/')[1] if '/' in pair else pair[3:],
+        }
 
 
 # Test the market data fetcher
 if __name__ == "__main__":
-    print("Testing MT5 MarketData...")
+    print("Testing Twelve Data MarketData...")
 
     try:
         md = MarketData()
 
         # Test fetching candles
-        print("\nFetching EURUSD M15 data...")
-        df = md.get_candles('EURUSD', 'M15', count=50)
+        print("\nFetching EUR/USD M15 data...")
+        df = md.get_candles('EUR/USD', 'M15', count=50)
 
         if df is not None:
             print(f"✅ Fetched {len(df)} candles")
@@ -270,21 +303,15 @@ if __name__ == "__main__":
 
         # Test current price
         print("\nFetching current price...")
-        price = md.get_current_price('EURUSD')
+        price = md.get_current_price('EUR/USD')
         if price:
-            print(f"✅ Current EURUSD price: {price:.5f}")
-
-        # Test symbol info
-        print("\nFetching symbol info...")
-        info = md.get_symbol_info('EURUSD')
-        if info:
-            print(f"✅ Symbol info: {info}")
+            print(f"✅ Current EUR/USD price: {price:.5f}")
 
         # Test multiple timeframes
         print("\nFetching multiple timeframes...")
-        data = md.get_multiple_timeframes('EURUSD')
+        data = md.get_multiple_timeframes('EUR/USD')
         print(f"✅ Fetched {len(data)} timeframes: {list(data.keys())}")
 
     except Exception as e:
         print(f"❌ Error: {e}")
-        print("\nMake sure MT5 terminal is running and logged in")
+        print("\nMake sure TWELVE_DATA_API_KEY is set in .env file")

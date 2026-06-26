@@ -16,7 +16,7 @@ from utils import (
 )
 
 class SMCStrategy:
-    """SMC Trading Strategy Implementation"""
+    """SMC Trading Strategy Implementation with Enhanced Features"""
 
     def __init__(self):
         """Initialize strategy components"""
@@ -29,7 +29,7 @@ class SMCStrategy:
         Analyze a currency pair for trade setups
 
         Args:
-            pair: Currency pair (e.g., 'EUR_USD')
+            pair: Currency pair (e.g., 'EUR/USD')
 
         Returns:
             Setup dictionary or None if no setup found
@@ -38,9 +38,9 @@ class SMCStrategy:
         if not self._can_alert(pair):
             return None
 
-        # Check if trading session active
-        if not is_trading_session():
-            return None
+        # Check if trading session active (24/7 enabled for testing)
+        # if not is_trading_session():
+        #     return None
 
         # Fetch market data
         data = self.market_data.get_multiple_timeframes(pair)
@@ -51,6 +51,7 @@ class SMCStrategy:
 
         m15_df = data['M15']
         h1_df = data['H1']
+        h4_df = data.get('H4')
 
         # Determine market structure on H1
         structure = self.analyzer.determine_market_structure(h1_df)
@@ -67,6 +68,9 @@ class SMCStrategy:
             direction=direction
         )
 
+        # Find supply/demand zones
+        supply_demand = self.analyzer.find_supply_demand_zones(h1_df)
+
         # Find fair value gaps
         fvgs = self.analyzer.find_fair_value_gaps(h1_df)
 
@@ -79,6 +83,12 @@ class SMCStrategy:
             liquidity_pools
         )
 
+        # Detect fakeout
+        fakeout = self.analyzer.detect_fakeout(m15_df)
+
+        # Detect Change of Character
+        choch = self.analyzer.find_change_of_character(h1_df)
+
         # Check for confluence
         confluence_count = 0
         setup_components = {}
@@ -86,23 +96,41 @@ class SMCStrategy:
         # Get current price
         current_price = m15_df['close'].iloc[-1]
 
-        # Check if price is near order block
+        # Check if order block exists and price is near it
         if order_blocks:
             ob = order_blocks[-1]  # Most recent
             if direction == 'bullish':
-                if ob['low'] <= current_price <= ob['high'] * 1.002:
+                # Check if price is at or approaching order block
+                if ob['low'] - 0.0030 <= current_price <= ob['high'] * 1.005:
                     confluence_count += 1
                     setup_components['order_block'] = ob
             elif direction == 'bearish':
-                if ob['low'] * 0.998 <= current_price <= ob['high']:
+                # Check if price is at or approaching order block
+                if ob['low'] * 0.995 <= current_price <= ob['high'] + 0.0030:
                     confluence_count += 1
                     setup_components['order_block'] = ob
 
-        # Check if price is near FVG
+        # Check supply/demand zones
+        if direction == 'bullish' and supply_demand['demand']:
+            for zone in supply_demand['demand']:
+                if zone['low'] - 0.0020 <= current_price <= zone['high'] + 0.0020:
+                    confluence_count += 1
+                    setup_components['demand_zone'] = zone
+                    break
+
+        if direction == 'bearish' and supply_demand['supply']:
+            for zone in supply_demand['supply']:
+                if zone['low'] - 0.0020 <= current_price <= zone['high'] + 0.0020:
+                    confluence_count += 1
+                    setup_components['supply_zone'] = zone
+                    break
+
+        # Check if FVG exists
         if fvgs:
             for fvg in fvgs:
                 if fvg['type'] == direction:
-                    if fvg['low'] <= current_price <= fvg['high']:
+                    # Check if price is in or near FVG
+                    if fvg['low'] - 0.0020 <= current_price <= fvg['high'] + 0.0020:
                         confluence_count += 1
                         setup_components['fvg'] = fvg
                         break
@@ -112,32 +140,41 @@ class SMCStrategy:
             confluence_count += 1
             setup_components['liquidity_sweep'] = liquidity_sweep
 
+        # Bonus: Fakeout detection
+        if fakeout and fakeout['type'] == direction and fakeout.get('confirmed'):
+            confluence_count += 1
+            setup_components['fakeout'] = fakeout
+
+        # Bonus: Change of Character
+        if choch and choch['type'] == direction:
+            setup_components['choch'] = choch
+
         # Need minimum confluence
         if confluence_count < config.MIN_CONFLUENCE_COUNT:
             return None
 
-        # Check for confirmation candle on M15
-        if not self.analyzer.has_confirmation_candle(m15_df, direction):
-            return None
-
-        # Check volume
-        if not self.market_data.is_high_volume(m15_df):
-            return None
+        # Store confirmations for scoring
+        setup_confirmations = {
+            'has_confirmation_candle': self.analyzer.has_confirmation_candle(m15_df, direction),
+            'has_high_volume': self.market_data.is_high_volume(m15_df),
+            'in_correct_zone': False,
+            'has_bos': structure.get('bos', False),
+            'has_fakeout': 'fakeout' in setup_components,
+            'has_choch': 'choch' in setup_components
+        }
 
         # Check premium/discount zone
         swing_high = h1_df['high'].tail(20).max()
         swing_low = h1_df['low'].tail(20).min()
 
         if direction == 'bullish':
-            if not self.analyzer.is_in_discount_zone(
+            setup_confirmations['in_correct_zone'] = self.analyzer.is_in_discount_zone(
                 current_price, swing_low, swing_high
-            ):
-                return None
+            )
         elif direction == 'bearish':
-            if not self.analyzer.is_in_premium_zone(
+            setup_confirmations['in_correct_zone'] = self.analyzer.is_in_premium_zone(
                 current_price, swing_low, swing_high
-            ):
-                return None
+            )
 
         # Calculate setup parameters
         setup = self._build_setup(
@@ -146,15 +183,23 @@ class SMCStrategy:
             current_price=current_price,
             structure=structure,
             components=setup_components,
+            confirmations=setup_confirmations,
             m15_df=m15_df,
             h1_df=h1_df
         )
 
         # Score the setup
-        setup['score'] = self._score_setup(setup)
+        setup['score'] = self._score_setup(setup, setup_confirmations, confluence_count)
 
-        # Only return if score meets threshold
-        if setup['score'] >= config.MIN_SETUP_SCORE:
+        # Calculate TP distance for filtering
+        entry = setup['entry']
+        sl = setup['stop_loss']
+        sl_distance = abs(entry - sl)
+        tp1 = entry + (sl_distance * config.TP1_RR) if setup['direction'] == 'LONG' else entry - (sl_distance * config.TP1_RR)
+        tp_pips = calculate_pips(entry, tp1, pair)
+
+        # Only return if score meets threshold AND TP is sufficient
+        if setup['score'] >= config.MIN_SETUP_SCORE and tp_pips >= config.MIN_TP_PIPS:
             self.last_alerts[pair] = datetime.now()
             return setup
 
@@ -167,35 +212,48 @@ class SMCStrategy:
         current_price: float,
         structure: Dict,
         components: Dict,
+        confirmations: Dict,
         m15_df: pd.DataFrame,
         h1_df: pd.DataFrame
     ) -> Dict:
         """Build complete setup dictionary"""
 
-        # Determine entry zone
+        # Determine entry zone (prioritize order block, then demand/supply, then FVG)
         if 'order_block' in components:
             ob = components['order_block']
             entry_zone = [ob['low'], ob['high']]
             entry = (ob['low'] + ob['high']) / 2
+        elif 'demand_zone' in components:
+            zone = components['demand_zone']
+            entry_zone = [zone['low'], zone['high']]
+            entry = (zone['low'] + zone['high']) / 2
+        elif 'supply_zone' in components:
+            zone = components['supply_zone']
+            entry_zone = [zone['low'], zone['high']]
+            entry = (zone['low'] + zone['high']) / 2
         elif 'fvg' in components:
             fvg = components['fvg']
             entry_zone = [fvg['low'], fvg['high']]
             entry = (fvg['low'] + fvg['high']) / 2
         else:
-            entry_zone = [current_price * 0.9995, current_price * 1.0005]
+            entry_zone = [current_price * 0.9998, current_price * 1.0002]
             entry = current_price
 
         # Calculate stop loss
         if direction == 'bullish':
             if 'order_block' in components:
-                stop_loss = components['order_block']['low'] - (10 * 0.0001)
+                stop_loss = components['order_block']['low'] - (8 * 0.0001)
+            elif 'demand_zone' in components:
+                stop_loss = components['demand_zone']['low'] - (8 * 0.0001)
             else:
-                stop_loss = entry - (50 * 0.0001)
+                stop_loss = entry - (30 * 0.0001)
         else:  # bearish
             if 'order_block' in components:
-                stop_loss = components['order_block']['high'] + (10 * 0.0001)
+                stop_loss = components['order_block']['high'] + (8 * 0.0001)
+            elif 'supply_zone' in components:
+                stop_loss = components['supply_zone']['high'] + (8 * 0.0001)
             else:
-                stop_loss = entry + (50 * 0.0001)
+                stop_loss = entry + (30 * 0.0001)
 
         # Calculate position size
         sl_pips = calculate_pips(entry, stop_loss, pair)
@@ -212,64 +270,66 @@ class SMCStrategy:
             'risk_amount': risk_amount,
             'structure': structure['structure'],
             'bias': f"Strong {direction.title()}",
-            'timestamp': datetime.now()
+            'timestamp': datetime.now(),
+            'confirmations': confirmations
         }
 
-        # Add components
+        # Add all components
         if 'order_block' in components:
             setup['order_block'] = components['order_block']
+        if 'demand_zone' in components:
+            setup['demand_zone'] = components['demand_zone']
+        if 'supply_zone' in components:
+            setup['supply_zone'] = components['supply_zone']
         if 'fvg' in components:
             setup['fvg'] = components['fvg']
         if 'liquidity_sweep' in components:
             setup['liquidity_sweep'] = components['liquidity_sweep']
+        if 'fakeout' in components:
+            setup['fakeout'] = components['fakeout']
+        if 'choch' in components:
+            setup['choch'] = components['choch']
 
         return setup
 
-    def _score_setup(self, setup: Dict) -> int:
+    def _score_setup(self, setup: Dict, confirmations: Dict, confluence_count: int) -> int:
         """
         Score setup quality (0-10)
 
         Scoring:
-        - Confluence (max 3 points)
+        - Confluence count (max 4 points)
         - Market structure (2 points)
-        - Liquidity sweep (2 points)
-        - Volume (1 point)
-        - Session (1 point)
-        - Candle pattern (1 point)
+        - Confirmation candle (1 point)
+        - High volume (1 point)
+        - Correct zone (1 point)
+        - BOS/Fakeout/ChoCH bonuses (1 point)
         """
         score = 0
 
-        # Confluence count (max 3)
-        confluence_count = 0
-        if 'order_block' in setup:
-            confluence_count += 1
-        if 'fvg' in setup:
-            confluence_count += 1
-        if 'liquidity_sweep' in setup:
-            confluence_count += 1
+        # Base: Confluence count (max 4)
+        score += min(confluence_count, 4)
 
-        score += min(confluence_count, 3)
-
-        # Market structure (2 points)
+        # Base: Market structure (2 points)
         if 'Bullish' in setup['structure'] or 'Bearish' in setup['structure']:
             score += 2
 
-        # Liquidity sweep quality (2 points)
-        if 'liquidity_sweep' in setup:
-            sweep = setup['liquidity_sweep']
-            if sweep.get('sweep_pips', 0) < 15:
-                score += 2  # Clean sweep
-            else:
-                score += 1  # Weak sweep
+        # Bonus: Confirmation candle (1 point)
+        if confirmations.get('has_confirmation_candle', False):
+            score += 1
 
-        # Volume is always checked before creating setup (1 point)
-        score += 1
+        # Bonus: High volume (1 point)
+        if confirmations.get('has_high_volume', False):
+            score += 1
 
-        # Session timing is always checked (1 point)
-        score += 1
+        # Bonus: In correct premium/discount zone (1 point)
+        if confirmations.get('in_correct_zone', False):
+            score += 1
 
-        # Confirmation candle is always checked (1 point)
-        score += 1
+        # Bonus: BOS, Fakeout, or ChoCH (1 point)
+        if (confirmations.get('has_bos', False) or
+            confirmations.get('has_fakeout', False) or
+            confirmations.get('has_choch', False)):
+            score += 1
 
         return min(score, 10)
 
@@ -308,15 +368,15 @@ class SMCStrategy:
 
 # Test the strategy
 if __name__ == "__main__":
-    print("Testing SMC Strategy...")
+    print("Testing Enhanced SMC Strategy...")
 
     try:
         strategy = SMCStrategy()
         print("✅ Strategy initialized")
 
-        # Test with EUR_USD
-        print("\nAnalyzing EUR_USD...")
-        setup = strategy.analyze_pair('EUR_USD')
+        # Test with EUR/USD
+        print("\nAnalyzing EUR/USD...")
+        setup = strategy.analyze_pair('EUR/USD')
 
         if setup:
             print(f"✅ Setup found!")
@@ -324,9 +384,10 @@ if __name__ == "__main__":
             print(f"Entry: {setup['entry']:.5f}")
             print(f"Stop Loss: {setup['stop_loss']:.5f}")
             print(f"Score: {setup['score']}/10")
+            print(f"Confluences: {sum([1 for k in setup.keys() if k in ['order_block', 'demand_zone', 'supply_zone', 'fvg', 'liquidity_sweep', 'fakeout']])}")
         else:
-            print("No setup found (this is normal - setups are rare)")
+            print("No setup found (this is normal - high-quality setups are rare)")
 
     except Exception as e:
         print(f"❌ Error: {e}")
-        print("\nMake sure OANDA credentials are set in .env file")
+        print("\nMake sure TWELVE_DATA_API_KEY is set in .env file")

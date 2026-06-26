@@ -1,6 +1,6 @@
 """
-SMC Market Analyzer
-Implements Order Blocks, Fair Value Gaps, and Liquidity Analysis
+SMC Market Analyzer with Advanced Features
+Implements Order Blocks, Fair Value Gaps, Supply/Demand Zones, Liquidity Analysis, and Fakeout Detection
 """
 import pandas as pd
 import numpy as np
@@ -9,7 +9,7 @@ import config
 from utils import calculate_pips, pips_to_price
 
 class SMCAnalyzer:
-    """Smart Money Concepts Market Analyzer"""
+    """Smart Money Concepts Market Analyzer with Advanced Features"""
 
     def __init__(self):
         """Initialize analyzer"""
@@ -48,7 +48,10 @@ class SMCAnalyzer:
                     move = next_candles['high'].max() - current['low']
                     move_pips = move / 0.0001
 
-                    if move_pips >= 30:  # At least 30 pip move
+                    if move_pips >= 25:  # At least 25 pip move
+                        # Check for volume confirmation
+                        has_volume = current['volume'] > df['volume'].tail(20).mean() * 0.8
+
                         order_blocks.append({
                             'type': 'bullish',
                             'low': current['low'],
@@ -56,7 +59,8 @@ class SMCAnalyzer:
                             'open': current['open'],
                             'close': current['close'],
                             'time': current.name,
-                            'strength': move_pips
+                            'strength': move_pips,
+                            'volume_confirmed': has_volume
                         })
 
             elif direction == 'bearish':
@@ -66,7 +70,9 @@ class SMCAnalyzer:
                     move = current['high'] - next_candles['low'].min()
                     move_pips = move / 0.0001
 
-                    if move_pips >= 30:
+                    if move_pips >= 25:
+                        has_volume = current['volume'] > df['volume'].tail(20).mean() * 0.8
+
                         order_blocks.append({
                             'type': 'bearish',
                             'low': current['close'],
@@ -74,16 +80,93 @@ class SMCAnalyzer:
                             'open': current['open'],
                             'close': current['close'],
                             'time': current.name,
-                            'strength': move_pips
+                            'strength': move_pips,
+                            'volume_confirmed': has_volume
                         })
 
         # Return most recent order blocks
         return order_blocks[-3:] if order_blocks else []
 
+    def find_supply_demand_zones(
+        self,
+        df: pd.DataFrame,
+        lookback: int = 50
+    ) -> Dict[str, List[Dict]]:
+        """
+        Find supply and demand zones (areas of interest)
+
+        Supply = Zone where price reversed down strongly
+        Demand = Zone where price reversed up strongly
+
+        Args:
+            df: DataFrame with OHLC data
+            lookback: Number of candles to look back
+
+        Returns:
+            Dictionary with 'supply' and 'demand' zone lists
+        """
+        supply_zones = []
+        demand_zones = []
+
+        recent_df = df.tail(lookback)
+
+        for i in range(5, len(recent_df) - 5):
+            candle = recent_df.iloc[i]
+            prev_candles = recent_df.iloc[i-5:i]
+            next_candles = recent_df.iloc[i+1:i+6]
+
+            # Demand Zone: Price bounced up from this area
+            if candle['low'] == prev_candles['low'].min():
+                bounce = next_candles['high'].max() - candle['low']
+                bounce_pips = bounce / 0.0001
+
+                if bounce_pips >= 20:  # Strong bounce
+                    # Zone is the candle body + wicks
+                    zone_low = candle['low']
+                    zone_high = max(candle['open'], candle['close'])
+                    zone_size = (zone_high - zone_low) / 0.0001
+
+                    if zone_size >= config.MIN_SUPPLY_DEMAND_SIZE:
+                        demand_zones.append({
+                            'type': 'demand',
+                            'low': zone_low,
+                            'high': zone_high,
+                            'strength': bounce_pips,
+                            'time': candle.name,
+                            'tested': 0,
+                            'broken': False
+                        })
+
+            # Supply Zone: Price rejected down from this area
+            if candle['high'] == prev_candles['high'].max():
+                drop = candle['high'] - next_candles['low'].min()
+                drop_pips = drop / 0.0001
+
+                if drop_pips >= 20:  # Strong rejection
+                    zone_low = min(candle['open'], candle['close'])
+                    zone_high = candle['high']
+                    zone_size = (zone_high - zone_low) / 0.0001
+
+                    if zone_size >= config.MIN_SUPPLY_DEMAND_SIZE:
+                        supply_zones.append({
+                            'type': 'supply',
+                            'low': zone_low,
+                            'high': zone_high,
+                            'strength': drop_pips,
+                            'time': candle.name,
+                            'tested': 0,
+                            'broken': False
+                        })
+
+        return {
+            'supply': supply_zones[-3:] if supply_zones else [],
+            'demand': demand_zones[-3:] if demand_zones else []
+        }
+
     def find_fair_value_gaps(
         self,
         df: pd.DataFrame,
-        min_size_pips: int = 10
+        min_size_pips: int = 8
     ) -> List[Dict]:
         """
         Find Fair Value Gaps (3-candle imbalance patterns)
@@ -110,13 +193,18 @@ class SMCAnalyzer:
                 gap_size = (candle3['low'] - candle1['high']) / 0.0001
 
                 if gap_size >= min_size_pips:
+                    # Check if middle candle shows momentum
+                    middle_body = abs(candle2['close'] - candle2['open'])
+                    has_momentum = middle_body > 0.0005  # Decent body size
+
                     fvgs.append({
                         'type': 'bullish',
                         'low': candle1['high'],
                         'high': candle3['low'],
                         'size_pips': gap_size,
                         'time': candle3.name,
-                        'filled': False
+                        'filled': False,
+                        'momentum': has_momentum
                     })
 
             # Bearish FVG: Gap between candle1 low and candle3 high
@@ -124,13 +212,17 @@ class SMCAnalyzer:
                 gap_size = (candle1['low'] - candle3['high']) / 0.0001
 
                 if gap_size >= min_size_pips:
+                    middle_body = abs(candle2['close'] - candle2['open'])
+                    has_momentum = middle_body > 0.0005
+
                     fvgs.append({
                         'type': 'bearish',
                         'low': candle3['high'],
                         'high': candle1['low'],
                         'size_pips': gap_size,
                         'time': candle3.name,
-                        'filled': False
+                        'filled': False,
+                        'momentum': has_momentum
                     })
 
         # Return most recent unfilled FVGs
@@ -158,16 +250,20 @@ class SMCAnalyzer:
 
         # Find equal highs (buy-side liquidity)
         buy_side = []
-        for i in range(len(highs) - 5, len(highs)):
-            for j in range(i + 1, min(i + 10, len(highs))):
+        for i in range(len(highs) - 20, len(highs)):
+            if i < 0:
+                continue
+            for j in range(i + 1, min(i + 15, len(highs))):
                 if abs(highs[i] - highs[j]) <= tolerance:
                     buy_side.append(highs[i])
                     break
 
         # Find equal lows (sell-side liquidity)
         sell_side = []
-        for i in range(len(lows) - 5, len(lows)):
-            for j in range(i + 1, min(i + 10, len(lows))):
+        for i in range(len(lows) - 20, len(lows)):
+            if i < 0:
+                continue
+            for j in range(i + 1, min(i + 15, len(lows))):
                 if abs(lows[i] - lows[j]) <= tolerance:
                     sell_side.append(lows[i])
                     break
@@ -176,7 +272,9 @@ class SMCAnalyzer:
         current_price = df['close'].iloc[-1]
         round_levels = [
             round(current_price - 0.0050, 4),
+            round(current_price - 0.0025, 4),
             round(current_price, 4),
+            round(current_price + 0.0025, 4),
             round(current_price + 0.0050, 4)
         ]
 
@@ -223,7 +321,8 @@ class SMCAnalyzer:
                             'level': level,
                             'low': candle.low,
                             'sweep_pips': sweep_distance,
-                            'time': candle.Index
+                            'time': candle.Index,
+                            'clean': sweep_distance < 10  # Clean if swept < 10 pips
                         }
 
         # Check for bearish sweep (price swept up then down)
@@ -239,7 +338,77 @@ class SMCAnalyzer:
                             'level': level,
                             'high': candle.high,
                             'sweep_pips': sweep_distance,
-                            'time': candle.Index
+                            'time': candle.Index,
+                            'clean': sweep_distance < 10
+                        }
+
+        return None
+
+    def detect_fakeout(
+        self,
+        df: pd.DataFrame,
+        lookback: int = 10
+    ) -> Optional[Dict]:
+        """
+        Detect fakeout patterns (false breakouts)
+
+        Fakeout = Price breaks a level then quickly reverses
+
+        Args:
+            df: DataFrame with OHLC data
+            lookback: Candles to check for fakeout
+
+        Returns:
+            Fakeout dictionary or None
+        """
+        if len(df) < lookback + 5:
+            return None
+
+        recent = df.tail(lookback + 5)
+
+        # Find recent swing high/low
+        swing_high = recent['high'].iloc[:-3].max()
+        swing_low = recent['low'].iloc[:-3].min()
+
+        last_candles = recent.tail(config.FAKEOUT_CONFIRMATION_CANDLES)
+
+        # Bullish fakeout: broke below support then reversed up
+        for i in range(-3, 0):
+            candle = recent.iloc[i]
+
+            # Check if it broke below swing low
+            if candle['low'] < swing_low:
+                # Check if it closed back above
+                if candle['close'] > swing_low:
+                    # Confirm with next candles moving up
+                    if all(c['close'] > swing_low for _, c in last_candles.iterrows()):
+                        fakeout_distance = (swing_low - candle['low']) / 0.0001
+
+                        return {
+                            'type': 'bullish',
+                            'level': swing_low,
+                            'fake_low': candle['low'],
+                            'distance_pips': fakeout_distance,
+                            'confirmed': True,
+                            'time': candle.name
+                        }
+
+        # Bearish fakeout: broke above resistance then reversed down
+        for i in range(-3, 0):
+            candle = recent.iloc[i]
+
+            if candle['high'] > swing_high:
+                if candle['close'] < swing_high:
+                    if all(c['close'] < swing_high for _, c in last_candles.iterrows()):
+                        fakeout_distance = (candle['high'] - swing_high) / 0.0001
+
+                        return {
+                            'type': 'bearish',
+                            'level': swing_high,
+                            'fake_high': candle['high'],
+                            'distance_pips': fakeout_distance,
+                            'confirmed': True,
+                            'time': candle.name
                         }
 
         return None
@@ -249,7 +418,7 @@ class SMCAnalyzer:
         df: pd.DataFrame
     ) -> Dict:
         """
-        Determine market structure (trend direction)
+        Determine market structure (trend direction) with Break of Structure (BOS)
 
         Args:
             df: DataFrame with OHLC data
@@ -258,42 +427,50 @@ class SMCAnalyzer:
             Dictionary with structure info
         """
         if len(df) < 20:
-            return {'bias': 'neutral', 'structure': 'unclear'}
+            return {'bias': 'neutral', 'structure': 'unclear', 'bos': False}
 
         # Find recent swing highs and lows
         highs = df['high'].rolling(window=5, center=True).max()
         lows = df['low'].rolling(window=5, center=True).min()
 
-        recent_highs = highs.tail(10).dropna()
-        recent_lows = lows.tail(10).dropna()
+        recent_highs = highs.tail(15).dropna()
+        recent_lows = lows.tail(15).dropna()
 
         # Check for higher highs and higher lows (bullish)
-        if len(recent_highs) >= 2 and len(recent_lows) >= 2:
-            hh = recent_highs.iloc[-1] > recent_highs.iloc[-2]
+        if len(recent_highs) >= 3 and len(recent_lows) >= 3:
+            hh = recent_highs.iloc[-1] > recent_highs.iloc[-2] > recent_highs.iloc[-3]
             hl = recent_lows.iloc[-1] > recent_lows.iloc[-2]
+
+            # Check for Break of Structure (BOS)
+            bos_bullish = df['close'].iloc[-1] > recent_highs.iloc[-2]
 
             if hh and hl:
                 return {
                     'bias': 'bullish',
                     'structure': 'Bullish (HH/HL)',
-                    'strength': 'strong'
+                    'strength': 'strong',
+                    'bos': bos_bullish
                 }
 
             # Check for lower highs and lower lows (bearish)
-            lh = recent_highs.iloc[-1] < recent_highs.iloc[-2]
+            lh = recent_highs.iloc[-1] < recent_highs.iloc[-2] < recent_highs.iloc[-3]
             ll = recent_lows.iloc[-1] < recent_lows.iloc[-2]
+
+            bos_bearish = df['close'].iloc[-1] < recent_lows.iloc[-2]
 
             if lh and ll:
                 return {
                     'bias': 'bearish',
                     'structure': 'Bearish (LH/LL)',
-                    'strength': 'strong'
+                    'strength': 'strong',
+                    'bos': bos_bearish
                 }
 
         return {
             'bias': 'neutral',
             'structure': 'Ranging/Consolidation',
-            'strength': 'weak'
+            'strength': 'weak',
+            'bos': False
         }
 
     def is_in_discount_zone(
@@ -352,12 +529,14 @@ class SMCAnalyzer:
             # Hammer (long lower wick)
             body = abs(last['close'] - last['open'])
             lower_wick = min(last['open'], last['close']) - last['low']
-            if lower_wick > body * 2:
+            if lower_wick > body * 2 and last['close'] > last['open']:
                 return True
 
-            # Pin bar
-            if last['close'] > last['open'] and lower_wick > body:
-                return True
+            # Strong bullish candle
+            if last['close'] > last['open']:
+                body_size = (last['close'] - last['open']) / 0.0001
+                if body_size > 10:  # Strong 10+ pip body
+                    return True
 
         elif direction == 'bearish':
             # Bearish engulfing
@@ -370,17 +549,67 @@ class SMCAnalyzer:
             # Shooting star (long upper wick)
             body = abs(last['close'] - last['open'])
             upper_wick = last['high'] - max(last['open'], last['close'])
-            if upper_wick > body * 2:
+            if upper_wick > body * 2 and last['close'] < last['open']:
                 return True
 
+            # Strong bearish candle
+            if last['close'] < last['open']:
+                body_size = (last['open'] - last['close']) / 0.0001
+                if body_size > 10:
+                    return True
+
         return False
+
+    def find_change_of_character(
+        self,
+        df: pd.DataFrame
+    ) -> Optional[Dict]:
+        """
+        Find Change of Character (ChoCH) - early trend change signal
+
+        ChoCH = Break of recent structure without full trend change
+
+        Args:
+            df: DataFrame with OHLC data
+
+        Returns:
+            ChoCH dictionary or None
+        """
+        if len(df) < 20:
+            return None
+
+        recent = df.tail(20)
+        current_price = df['close'].iloc[-1]
+
+        # Find last swing high and low
+        swing_high = recent['high'].iloc[:-3].max()
+        swing_low = recent['low'].iloc[:-3].min()
+
+        # Bullish ChoCH: broke above recent high
+        if current_price > swing_high:
+            return {
+                'type': 'bullish',
+                'level': swing_high,
+                'break_distance': (current_price - swing_high) / 0.0001,
+                'time': df.index[-1]
+            }
+
+        # Bearish ChoCH: broke below recent low
+        if current_price < swing_low:
+            return {
+                'type': 'bearish',
+                'level': swing_low,
+                'break_distance': (swing_low - current_price) / 0.0001,
+                'time': df.index[-1]
+            }
+
+        return None
 
 
 # Test the analyzer
 if __name__ == "__main__":
-    print("Testing SMC Analyzer...")
+    print("Testing Enhanced SMC Analyzer...")
 
-    # This would need real market data to test properly
-    # For now, just verify it imports correctly
     analyzer = SMCAnalyzer()
     print("✅ SMC Analyzer initialized successfully")
+    print("✅ Features: Order Blocks, Supply/Demand, FVG, Liquidity, Fakeouts, ChoCH")

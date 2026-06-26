@@ -1,546 +1,481 @@
-# 🤖 SMC Forex Trading Bot - Discord Alert System
+# SMC Forex Trading Bot - Telegram Edition
 
-Automated 24/7 Smart Money Concepts (SMC) trading bot that monitors forex pairs and sends high-probability trade setups to your Discord channel. **Powered by MetaTrader 5 - No API limits!**
+**Smart Money Concepts Analyzer for EUR/USD**
 
-## 📋 Features
+Fully automated forex trading signal bot with comprehensive SMC analysis and Telegram notifications.
 
-- ✅ **24/7 Automated Monitoring** - Runs continuously without manual intervention
-- ✅ **SMC Strategy** - Order Blocks, Fair Value Gaps, Liquidity Sweeps
-- ✅ **Discord Alerts** - Real-time notifications for trade setups
-- ✅ **Multi-Pair Support** - Monitor multiple forex pairs simultaneously
-- ✅ **Session Filtering** - Only alerts during London/NY sessions (no spam)
-- ✅ **Quality Scoring** - Only sends setups with score ≥ 7/10
-- ✅ **Risk Management** - Auto-calculates position size and stop loss
-- ✅ **Easy Control** - Discord commands to add/remove pairs
-- ✅ **Fast Scanning** - 60-second intervals with MT5 real-time data
-- ✅ **No API Limits** - Direct MT5 connection, unlimited data access
+---
+
+## 🌟 Overview
+
+This bot monitors **EUR/USD 24/7** using advanced Smart Money Concepts (SMC) analysis and sends high-quality trade setups directly to your Telegram. Built with professional-grade technical analysis including order blocks, supply/demand zones, liquidity analysis, and fakeout detection.
+
+### Key Highlights
+- 🎯 **Single Pair Focus**: EUR/USD only for precision analysis
+- ⏱️ **3-Minute Intervals**: 480 scans per day (optimized for free API tier)
+- 📱 **Telegram Alerts**: Instant notifications with complete trade details
+- 🧠 **Comprehensive SMC**: All ICT concepts + supply/demand + fakeouts
+- 🎲 **Smart Filtering**: Only sends signals with ≥5 pip TP and quality score ≥3/10
+- 💰 **Auto Risk Management**: Position sizing based on account risk
+
+---
+
+## 📊 SMC Analysis Features
+
+### Core Components
+✅ **Order Blocks** - Last opposite candle before strong moves with volume confirmation  
+✅ **Supply & Demand Zones** - Areas of Interest (AOI) with strength scoring  
+✅ **Fair Value Gaps (FVG)** - 3-candle imbalance patterns with momentum detection  
+✅ **Liquidity Pools** - Equal highs/lows + round number levels  
+✅ **Liquidity Sweeps** - Stop hunt detection with clean/dirty classification  
+
+### Advanced Patterns
+✅ **Fakeout Detection** - False breakout identification with confirmation  
+✅ **Break of Structure (BOS)** - Trend change confirmation signals  
+✅ **Change of Character (ChoCH)** - Early reversal warning signals  
+✅ **Premium/Discount Zones** - Optimal entry zone identification  
+✅ **Market Structure Analysis** - HH/HL (bullish) and LH/LL (bearish) detection  
+
+### Confirmation Filters
+- Confirmation candle patterns (engulfing, hammer, shooting star)
+- Volume analysis (30% above average threshold)
+- Session tracking (London, NY, Asian)
+- Confluence scoring (0-10 scale)
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
-- Windows OS (required for MT5)
-- Python 3.8 or higher
-- Discord account
-- MetaTrader 5 (free download)
-- MT5 demo account (free, no credit card needed)
+- Python 3.9 or higher
+- Telegram account
+- Twelve Data API key (free tier: 800 calls/day)
 
 ### Installation
 
-1. **Download MetaTrader 5**
-   ```
-   Visit: https://www.metatrader5.com/en/download
-   Install the application (free)
-   ```
+**1. Install Dependencies**
+```bash
+pip install -r requirements.txt
+```
 
-2. **Get MT5 Demo Account**
-   - Open MT5 → File → Open an Account
-   - Choose: ICMarkets-Demo (or XM, FXCM)
-   - Fill form → Get Login, Password, Server
-   - Login and keep MT5 running
+**2. Get Telegram Bot Token**
+```
+1. Open Telegram, search for @BotFather
+2. Send /newbot command
+3. Choose bot name and username
+4. Copy the bot token provided
+5. Get your Chat ID from @userinfobot (send /start)
+```
 
-3. **Install bot dependencies**
-   ```bash
-   cd bot_setup
-   pip install -r requirements.txt
-   ```
+**3. Get Twelve Data API Key**
+```
+1. Visit https://twelvedata.com/
+2. Sign up for free account
+3. Navigate to API section in dashboard
+4. Copy your API key
+5. Free tier: 800 calls/day (plenty for 480 scans)
+```
 
-4. **Configure environment**
-   - Edit `.env` file
-   - Add your Discord credentials (see Configuration section)
+**4. Configure Environment**
 
-5. **Run the bot**
-   ```bash
-   python main.py
-   ```
-
----
-
-## ⚙️ Configuration
-
-### 1. Create Discord Bot
-
-1. Visit **Discord Developer Portal**: https://discord.com/developers/applications
-2. Click **"New Application"**
-3. Name your bot (e.g., "SMC Trading Bot")
-4. Go to **"Bot"** tab → Click **"Add Bot"**
-5. Under **Token** section → Click **"Reset Token"** → Copy the token
-6. Enable these **Privileged Gateway Intents**:
-   - ✅ MESSAGE CONTENT INTENT
-   - ✅ SERVER MEMBERS INTENT (optional)
-7. Go to **"OAuth2"** → **"URL Generator"**
-   - Select scopes: `bot`
-   - Select permissions: `Send Messages`, `Read Messages/View Channels`
-   - Copy the generated URL
-8. Open URL in browser → Add bot to your Discord server
-
-### 2. Get Discord Channel ID
-
-1. Enable Developer Mode in Discord:
-   - User Settings → Advanced → Enable Developer Mode
-2. Right-click your channel → Copy ID
-3. Save this Channel ID
-
-### 3. Setup MetaTrader 5
-
-**Getting Demo Account:**
-
-1. **Download & Install MT5:**
-   - Visit: https://www.metatrader5.com/en/download
-   - Download Windows version
-   - Install (it's free!)
-
-2. **Create Demo Account:**
-   - Open MT5 application
-   - Click: File → Open an Account
-   - Search for "ICMarkets" (recommended)
-   - Select "ICMarkets-Demo"
-   - Fill registration form:
-     - Name: Your name
-     - Email: Your email
-     - Leverage: 1:500
-     - Deposit: $10,000 (demo money)
-   - Click Next
-   - **Save the credentials** and login
-
-3. **Keep MT5 Running:**
-   - MT5 must be running for the bot to work
-   - Login to your demo account
-   - Minimize to system tray
-
-**Alternative Brokers:**
-- **XM Global:** `XM Global-Demo`
-- **FXCM:** `FXCM-Demo`
-- **FBS:** `FBS-Demo`
-
-### 4. Setup .env File
-
-Edit the `.env` file in the `bot_setup` folder:
-
+Edit `.env` file:
 ```env
-# Discord Configuration
-DISCORD_BOT_TOKEN=your_bot_token_here
-DISCORD_CHANNEL_ID=your_channel_id_here
+# Telegram Configuration
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+
+# Twelve Data API Configuration
+TWELVE_DATA_API_KEY=your_api_key_here  # ← ADD YOUR KEY HERE
 
 # Trading Configuration
 ACCOUNT_SIZE=1000
 RISK_PERCENT=0.5
-MIN_SETUP_SCORE=7
+MIN_SETUP_SCORE=3
+MIN_TP_PIPS=5.0
+SCAN_INTERVAL_SECONDS=180
+```
 
-# Session Times (IST - Indian Standard Time)
-LONDON_OPEN_HOUR=13
-LONDON_OPEN_MINUTE=30
-LONDON_CLOSE_HOUR=21
-LONDON_CLOSE_MINUTE=30
-NY_OPEN_HOUR=18
-NY_OPEN_MINUTE=30
-NY_CLOSE_HOUR=1
-NY_CLOSE_MINUTE=30
+**5. Run the Bot**
+```bash
+python main.py
+```
 
-# Alert Settings
-ALERT_COOLDOWN_MINUTES=30
-MAX_ALERTS_PER_HOUR=3
+You should see:
+```
+🚀 SMC Trading Bot Started (Telegram)
+📊 Target Pair: EUR/USD
+⏰ Scan Interval: 3 minutes
+🎯 Min Setup Score: 3/10
+📍 Min TP for Auto-Send: 5.0 pips
+💰 Risk per Trade: 0.5% ($5.00)
 ```
 
 ---
 
-## 📱 Discord Commands
+## 📱 Telegram Commands
 
-Once bot is running, send these commands in Discord:
+### Available Commands
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `!start` | Start the bot and show welcome message | `!start` |
-| `!add <pair>` | Add forex pair to monitoring | `!add AUDUSD` |
-| `!remove <pair>` | Remove pair from monitoring | `!remove USDJPY` |
-| `!list` | Show all monitored pairs | `!list` |
-| `!status` | Show bot status and statistics | `!status` |
-| `!help` | Show all commands | `!help` |
+| Command | Description |
+|---------|-------------|
+| `/start` | Welcome message with bot information |
+| `/help` | Complete command list and features |
+| `/analyze` | Analyze EUR/USD right now (on-demand) |
+| `/status` | Bot statistics + last 4 analyses |
+
+### Command Examples
+
+**Check bot status:**
+```
+/status
+```
+Response includes:
+- Current session (London/NY/Asian)
+- Trading session status
+- Total alerts sent
+- Total scans completed
+- Bot uptime
+- Last 4 analysis results
+
+**Analyze now:**
+```
+/analyze
+```
+Forces immediate EUR/USD analysis regardless of scan schedule.
 
 ---
 
-## 📊 How It Works
+## 📬 Alert Format
 
-### 1. Market Analysis
-
-The bot scans markets every **60 seconds** using SMC concepts:
-
-- **Order Blocks**: Identifies institutional buying/selling zones
-- **Fair Value Gaps**: Finds market inefficiencies/imbalances
-- **Liquidity Sweeps**: Detects stop hunts and reversals
-- **Market Structure**: Confirms bullish/bearish bias
-
-### 2. Setup Scoring (0-10)
-
-Each potential setup is scored based on:
-- Confluence count (3 points max)
-- Market structure clarity (2 points)
-- Liquidity sweep quality (2 points)
-- Volume confirmation (1 point)
-- Session timing (1 point)
-- Candlestick pattern (1 point)
-
-**Only setups with score ≥ 7 trigger alerts**
-
-### 3. Alert Generation
-
-Alerts are sent when:
-- ✅ Score ≥ 7/10
-- ✅ During London or NY session
-- ✅ Not sent alert for same pair in last 30 min
-- ✅ Maximum 3 alerts per hour (all pairs)
-- ✅ High volume confirmed
-
-### 4. Alert Format
+When a high-quality setup is detected, you receive:
 
 ```
 🚨 TRADE SETUP DETECTED 🚨
 
 Pair: EURUSD
 Direction: 🟢 LONG
-Entry Zone: 1.15950 - 1.15980
+Entry Zone: 1.09450 - 1.09520
 
-💎 CONFLUENCES (3/3):
-✅ Order Block: 1.15920-1.15980
-✅ FVG: 1.15930-1.15970
-✅ Liquidity Sweep: 1.15850
+💎 CONFLUENCES (3/4):
+✅ Order Block: 1.09450-1.09480
+✅ FVG: 1.09460-1.09500
+✅ Liquidity Sweep: 1.09440
 
 📊 TRADE SETUP:
-Entry: 1.15965
-Stop Loss: 1.15920 (45 pips)
-TP1: 1.16033 (68 pips | 1:1.5)
-TP2: 1.16078 (113 pips | 1:2.5)
-TP3: 1.16100 (135 pips | 1:3.0)
+Entry: 1.09485
+Stop Loss: 1.09425 (6 pips)
+TP1: 1.09575 (9 pips | 1:1.5)
+TP2: 1.09695 (21 pips | 1:2.5)
+TP3: 1.09785 (30 pips | 1:3.0)
 
 💰 POSITION SIZE:
-Lot Size: 0.11 lots
+Lot Size: 0.83 lots
 Risk: $5.00 (0.5%)
 
 📈 MARKET INFO:
-Structure: Bullish
-Bias: Long
-Session: London
-Time: 14:30 IST
+Structure: Bullish (HH/HL)
+Bias: Strong Bullish
+Session: London-NY Overlap
+Time: 18:45 IST
 
-⚠️ CONFIRMATION NEEDED:
-Wait for bullish candle close
-Check volume increase
-No news in next 1 hour
-
----
-Setup Score: 9/10 ⭐⭐⭐⭐⭐⭐⭐⭐⭐
-```
+⚠️ CONFIRMATION STATUS:
+✅ Confirmation Candle
+✅ High Volume
+✅ Correct Premium/Discount Zone
 
 ---
-
-## 🔧 Customization
-
-### Modify Monitored Pairs (Default)
-
-Edit `config.py`:
-```python
-DEFAULT_PAIRS = ['EURUSD', 'GBPUSD', 'USDJPY']
+Setup Score: 8/10 ⭐⭐⭐⭐⭐⭐⭐⭐
 ```
 
-Or use Discord commands:
-```
-!add EURJPY
-!add AUDNZD
-!remove USDJPY
-```
-
-### Adjust Risk Settings
-
-Edit `.env`:
-```env
-ACCOUNT_SIZE=1000   # Your demo account size
-RISK_PERCENT=0.5    # Risk per trade (0.5% = $5 on $1k)
-```
-
-### Change Session Times
-
-Edit `.env` to match your timezone:
-```env
-LONDON_OPEN_HOUR=13  # 1:30 PM IST
-NY_OPEN_HOUR=18      # 6:30 PM IST
-```
-
-### Modify Alert Frequency
-
-Edit `.env`:
-```env
-ALERT_COOLDOWN_MINUTES=30  # Min time between alerts per pair
-MAX_ALERTS_PER_HOUR=3      # Max total alerts per hour
-MIN_SETUP_SCORE=7          # Minimum score (7-10)
-```
+**What you get:**
+- Clear direction (LONG/SHORT with emoji)
+- Entry zone and precise entry price
+- Stop Loss with pip distance
+- 3 Take Profit levels with R:R ratios
+- Auto-calculated position size
+- Risk amount based on your settings
+- All detected confluences listed
+- Market structure and bias
+- Current session and time (IST)
+- Confirmation status breakdown
+- Overall setup quality score
 
 ---
 
-## 📁 Project Structure
+## ⚙️ Configuration Guide
+
+### Trading Settings
+
+Edit `.env` file to customize:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `ACCOUNT_SIZE` | 1000 | Your trading account size (USD) |
+| `RISK_PERCENT` | 0.5 | Risk per trade percentage (0.5% = $5 per $1000) |
+| `MIN_SETUP_SCORE` | 3 | Minimum setup score (3-10) to send alerts |
+| `MIN_TP_PIPS` | 5.0 | Minimum TP distance required for auto-send |
+| `SCAN_INTERVAL_SECONDS` | 180 | Time between scans (180 = 3 minutes) |
+| `ALERT_COOLDOWN_MINUTES` | 30 | Minimum time between alerts for same pair |
+| `MAX_ALERTS_PER_HOUR` | 3 | Maximum alerts allowed per hour |
+
+### Optimization Tips
+
+**More Signals (Lower Quality):**
+```env
+MIN_SETUP_SCORE=3
+MIN_TP_PIPS=3.0
+```
+
+**Fewer Signals (Higher Quality):**
+```env
+MIN_SETUP_SCORE=7
+MIN_TP_PIPS=10.0
+```
+
+**Balanced (Recommended):**
+```env
+MIN_SETUP_SCORE=5
+MIN_TP_PIPS=5.0
+```
+
+### Session Times (IST)
+
+| Session | Open | Close | Overlap |
+|---------|------|-------|---------|
+| London | 13:30 | 21:30 | - |
+| NY | 18:30 | 01:30 | - |
+| Overlap | 18:30 | 21:30 | London + NY |
+
+**Note:** Bot scans 24/7 for analysis, session tracking provides context.
+
+---
+
+## 🔍 How the Bot Works
+
+### Analysis Pipeline
+
+**Every 3 minutes:**
+
+1. **Fetch Data**
+   - EUR/USD on M15, H1, H4 timeframes
+   - ~3 API calls per scan
+   - Cached for 60 seconds to optimize
+
+2. **Market Structure**
+   - Identify trend direction (bullish/bearish/neutral)
+   - Detect Higher Highs/Higher Lows (HH/HL)
+   - Detect Lower Highs/Lower Lows (LH/LL)
+   - Check for Break of Structure (BOS)
+   - Check for Change of Character (ChoCH)
+
+3. **Find SMC Components**
+   - Order blocks (last opposite candle before moves)
+   - Supply zones (rejection areas)
+   - Demand zones (bounce areas)
+   - Fair value gaps (imbalances)
+   - Liquidity pools (equal highs/lows + round numbers)
+
+4. **Detect Patterns**
+   - Liquidity sweeps (stop hunts with reversal)
+   - Fakeouts (false breakouts with confirmation)
+   - Confirmation candles (engulfing, hammers, etc.)
+   - Volume spikes (30%+ above average)
+
+5. **Calculate Confluence**
+   - Requires minimum 2 confluences
+   - Order block = 1 point
+   - Supply/Demand zone = 1 point
+   - Fair value gap = 1 point
+   - Liquidity sweep = 1 point
+   - Fakeout = 1 point (bonus)
+
+6. **Score Setup (0-10)**
+   - Confluence count (max 4 points)
+   - Market structure strength (2 points)
+   - Confirmation candle (1 point)
+   - High volume (1 point)
+   - Premium/discount zone (1 point)
+   - BOS/Fakeout/ChoCH (1 point)
+
+7. **Filter & Send**
+   - Score must be ≥ MIN_SETUP_SCORE
+   - TP distance must be ≥ MIN_TP_PIPS
+   - Not in cooldown period
+   - Below max alerts per hour
+   - ✅ Auto-send to Telegram
+
+---
+
+## 📊 API Usage & Costs
+
+### Twelve Data Free Tier
+
+| Metric | Value |
+|--------|-------|
+| Calls per Day | 800 |
+| Calls per Minute | Unlimited |
+| Historical Data | ✅ Included |
+| Real-time Data | ✅ Included |
+| Forex Support | ✅ Full support |
+
+### Bot Usage
+
+| Metric | Value |
+|--------|-------|
+| Scan Interval | 3 minutes |
+| Scans per Day | 480 |
+| API Calls per Scan | ~3 (M15, H1, H4) |
+| Total Daily Calls | ~480 |
+| Free Tier Buffer | 320 calls spare |
+
+**Verdict:** Free tier is more than enough! 📈
+
+---
+
+## 🛠️ Project Structure
 
 ```
 bot_setup/
-│
-├── main.py                 # Main bot entry point
-├── strategy.py             # SMC strategy implementation
-├── discord_handler.py      # Discord bot commands & alerts
-├── market_data.py          # MT5 API integration
-├── analyzer.py             # Market analysis logic
-├── config.py               # Configuration settings
-├── utils.py                # Helper functions
-│
-├── requirements.txt        # Python dependencies
-├── .env                    # Your credentials
-│
-└── README.md               # This file
+├── main.py                 # Main orchestrator, bot lifecycle
+├── config.py              # Configuration loader, validation
+├── telegram_handler.py    # Telegram bot commands, message handling
+├── strategy.py            # Main strategy logic, confluence detection
+├── analyzer.py            # SMC analysis engine (OB, FVG, SD, etc.)
+├── market_data.py         # Twelve Data API integration
+├── utils.py               # Helper functions (risk calc, formatting)
+├── requirements.txt       # Python dependencies
+├── .env                   # Your credentials (KEEP SECRET)
+├── .env.example          # Example environment file
+└── README.md             # This file
 ```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Bot doesn't start
+### Bot Won't Start
 
-**Error:** `ModuleNotFoundError: No module named 'MetaTrader5'`
-
-**Solution:**
+**Error: TELEGRAM_BOT_TOKEN is not set**
 ```bash
+# Solution: Check .env file has bot token
+TELEGRAM_BOT_TOKEN=your_actual_token_here
+```
+
+**Error: TWELVE_DATA_API_KEY is not set**
+```bash
+# Solution: Add your Twelve Data API key to .env
+TWELVE_DATA_API_KEY=your_actual_key_here
+```
+
+**Error: Module not found**
+```bash
+# Solution: Install dependencies
 pip install -r requirements.txt
 ```
 
----
+### No Signals Received
 
-### MT5 connection fails
-
-**Error:** `MT5 initialize() failed`
-
-**Check:**
-1. MT5 is installed
-2. MT5 application is RUNNING
-3. You're logged into a demo account
-4. You can see live prices in MT5
-
-**Solution:**
-- Open MT5 manually first
-- Login to your demo account
-- Verify you see live price updates
-- Then start the bot
-
----
-
-### No alerts received
-
-**Check:**
-1. Bot is running: `python main.py` should show "Bot started"
-2. Discord bot token and channel ID correct in `.env`
-3. Bot has permission to send messages in the channel
-4. Current time is during London/NY session
-5. Run `!status` command to see if monitoring is active
-6. Lower `MIN_SETUP_SCORE` to 6 for testing
-
-**Verify:**
+**Check bot is running:**
 ```bash
-python market_data.py
-```
-Should show: "✅ MT5 initialized successfully" and fetch data
-
----
-
-### Pair not found error
-
-**Error:** `No data received for EURUSD`
-
-**Solution:**
-- Open MT5 manually
-- Right-click in Market Watch → "Show All"
-- Find the pair → Right-click → "Chart Window"
-- This enables the symbol in MT5
-- Restart bot
-
----
-
-### Discord bot not responding
-
-**Check:**
-1. Bot is online in Discord (green status)
-2. MESSAGE CONTENT INTENT is enabled in Developer Portal
-3. Bot has Read/Send message permissions in channel
-4. Commands start with `!` not `/`
-
----
-
-## 📈 Performance Tips
-
-### For Best Results:
-
-1. **Start during London Open** (1:30 PM IST) - Most setups occur
-2. **Monitor 2-3 pairs** - Focus on EURUSD, GBPUSD, USDCAD
-3. **Trust the scoring** - Score ≥ 8 = very high probability
-4. **Use demo first** - Test for 1-2 weeks before live trading
-5. **Keep MT5 running** - Bot needs active MT5 connection
-6. **Fast scanning** - 60-second intervals catch setups quickly
-
-### System Requirements:
-
-- **Windows 10/11** (MT5 requirement)
-- **4GB RAM minimum**
-- **Stable internet connection**
-- **MT5 running in background**
-
----
-
-## 🛡️ Safety & Risk Management
-
-### Built-in Safety Features:
-
-- ✅ Default 0.5% risk per trade
-- ✅ Auto-calculated position sizing
-- ✅ Stop loss on every setup
-- ✅ Multiple take profit levels (scaled exits)
-- ✅ Session filtering (avoid low liquidity)
-- ✅ Quality scoring (only high-probability setups)
-- ✅ Lot size clearly displayed in alerts
-
-### Important Notes:
-
-⚠️ **This bot provides ALERTS, not auto-trading**
-- You must manually execute trades
-- Review each setup before entering
-- Bot is a tool, not financial advice
-
-⚠️ **Test on demo first**
-- Run for 2-4 weeks on paper
-- Verify alert quality
-- Understand the strategy
-
-⚠️ **Risk disclaimer**
-- Trading forex involves risk
-- Only trade with money you can afford to lose
-- Past performance ≠ future results
-
----
-
-## 🎯 Default Configuration
-
-### Default Monitored Pairs:
-- EURUSD
-- GBPUSD
-- USDJPY
-
-### Timeframes Analyzed:
-- M15 (15-minute)
-- H1 (1-hour)
-- H4 (4-hour)
-
-### Scan Interval:
-- **60 seconds** (fast with MT5)
-
-### Session Times (IST):
-- London: 1:30 PM - 9:30 PM
-- NY: 6:30 PM - 1:30 AM (next day)
-
-### Risk Management:
-- Account Size: $1,000 (demo)
-- Risk per Trade: 0.5% ($5)
-- Min Setup Score: 7/10
-
----
-
-## 🔄 Updates & Maintenance
-
-### Keep Bot Updated:
-
-```bash
-git pull origin main  # If using git
-pip install -r requirements.txt --upgrade
+# Terminal should show:
+🔍 Scanning EUR/USD...
+⏳ Next scan: 22:15:00 IST
 ```
 
-### Monitor Performance:
+**Check bot status via Telegram:**
+```
+/status
+```
+Verify:
+- Scans completed is increasing
+- No error messages in terminal
 
-- Use `!status` command daily
-- Track win rate of alerts
-- Adjust `MIN_SETUP_SCORE` if needed (higher = fewer but better)
+**Why no signals?**
+- High-quality setups are rare (by design)
+- Market may be ranging/consolidating
+- Try `/analyze` for immediate check
+- Consider lowering `MIN_SETUP_SCORE` to 3
 
----
+### API Errors
 
-## 📞 Support
+**Error: 429 Too Many Requests**
+```bash
+# Exceeded API quota
+# Solution: Wait for daily reset or upgrade plan
+```
 
-### Issues?
-
-1. Check troubleshooting section above
-2. Verify `.env` configuration
-3. Test MT5 connection: `python market_data.py`
-4. Check bot logs in terminal
-5. Verify Discord bot permissions
-
----
-
-## 📜 License
-
-This project is for educational purposes only. Not financial advice.
-
----
-
-## 🎯 Next Steps
-
-1. ✅ Install MetaTrader 5
-2. ✅ Get demo account and login
-3. ✅ Create Discord bot and get token
-4. ✅ Get Discord channel ID
-5. ✅ Install dependencies: `pip install -r requirements.txt`
-6. ✅ Configure `.env` file
-7. ✅ Test MT5 connection: `python market_data.py`
-8. ✅ Run bot: `python main.py`
-9. ✅ Send `!start` in Discord channel
-10. ✅ Wait for alerts during London/NY sessions
-11. ✅ Track performance for 1-2 weeks
-12. ✅ Adjust settings as needed
+**Error: Invalid API Key**
+```bash
+# Solution: Verify API key is correct in .env
+# Get new key from: https://twelvedata.com/account
+```
 
 ---
 
-**Happy Trading! 🚀**
+## ⚠️ Important Warnings
 
-*Remember: The bot finds setups. YOU make the final trading decision.*
+### Trading Risks
 
----
+⚠️ **This bot provides signals, NOT automated trading**
+- You must manually review and enter trades
+- Always verify setups before risking real money
+- Use proper risk management (1-2% per trade max)
+- Past performance does NOT guarantee future results
 
-## 💡 Quick Tips
+⚠️ **Risk Disclaimer**
+- Forex trading involves substantial risk of loss
+- Only trade with capital you can afford to lose
+- This bot is for educational purposes
+- No guarantee of profits
+- Developer is not responsible for trading losses
 
-**Setup:**
-- Keep MT5 running and logged in
-- Use ICMarkets demo (reliable)
-- Enable MESSAGE CONTENT INTENT for Discord bot
-- Start bot during London session for quick testing
+### Security
 
-**Usage:**
-- Quality > Quantity (bot filters for you)
-- Score 9-10 = extremely high probability
-- Check lot size in each alert
-- Demo test minimum 2 weeks
-- Track your win rate
-- Adjust risk settings to your comfort level
-
-**Performance:**
-- 60-second scans = fast setup detection
-- No API limits with MT5
-- Real-time tick data
-- Reliable during high volatility
+⚠️ **Protect Your Credentials**
+- NEVER commit `.env` file to git
+- Keep your Telegram bot token private
+- Don't share your Twelve Data API key
+- Don't share screenshots containing tokens
 
 ---
 
-## 🔑 Key Features
+## 📈 Performance Expectations
 
-✅ **Discord Integration** - Professional Discord bot with commands  
-✅ **MT5 Direct Connection** - No API limits, real-time data  
-✅ **Fast Scanning** - 60-second intervals  
-✅ **Auto Position Sizing** - Risk management built-in  
-✅ **Multi-Timeframe Analysis** - M15, H1, H4 confluence  
-✅ **Session Filtering** - London & NY only  
-✅ **Quality Scoring** - Score ≥ 7/10 only  
-✅ **Lot Size Display** - Clear position sizing in alerts  
+### Signal Frequency
+
+Based on MIN_SETUP_SCORE setting:
+
+| Score | Frequency | Quality |
+|-------|-----------|---------|
+| 3-4 | 2-5/day | Good |
+| 5-6 | 1-3/day | Very Good |
+| 7-8 | 0-2/day | Excellent |
+| 9-10 | 0-1/week | Perfect |
+
+**Note:** Market conditions greatly affect frequency. During ranging periods, expect fewer signals.
 
 ---
 
-**Ready to start?** Follow the Next Steps above! 📚
+## 🎯 Final Notes
+
+### Best Practices
+
+1. **Start with demo account** - Test signals before going live
+2. **Lower risk initially** - Use 0.25-0.5% per trade when starting
+3. **Verify every setup** - Don't blindly follow bot signals
+4. **Keep learning** - Understand WHY setups work
+5. **Track results** - Journal your trades for improvement
+
+### Success Tips
+
+✅ Be patient - High-quality setups are rare  
+✅ Trust the process - Don't chase every move  
+✅ Manage risk - Never risk more than 1-2% per trade  
+✅ Stay disciplined - Follow your trading plan  
+✅ Keep learning - Study each setup the bot finds  
+
+---
+
+**Built with Smart Money Concepts | Powered by Twelve Data API | Telegram Integration**
+
+*Happy Trading! 🚀📈*
